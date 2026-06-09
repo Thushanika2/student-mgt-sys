@@ -11,7 +11,7 @@ def _validate_course_payload(data, course_id=None):
     
     existing_course_id = Course.query.filter_by(course_id=data["course_id"]).first()
     if existing_course_id:
-        return jsonify({"ERROR": "course_id already exists"}), 400
+        errors.append("course_id already exists")
     
     existing_course_code = Course.query.filter_by(course_code=data["course_code"]).first()
     if existing_course_code:
@@ -21,7 +21,8 @@ def _validate_course_payload(data, course_id=None):
     if course_name is None or str(course_name).strip() == "":
         errors.append("course_name is required.")
 
-    if not (1 <= ["credits"] <= 6):
+    credits = data.get("credits")
+    if credits is None or not (1 <= int(credits) <= 6):
         errors.append("Credits must be between 1 and 6")
 
     lecturer = data.get("lecturer_id")
@@ -44,7 +45,7 @@ def create_course():
         course = Course(
             course_code=data.get("course_code").strip(),
             course_name=data.get("course_name").strip(),
-            credits=data.get("credits").strip(),
+            credits=int(data.get("credits")),
             lecturer_id=data.get("lecturer_id").strip(),
         )
         db.session.add(course)
