@@ -1,5 +1,6 @@
 from flask import jsonify, request
-
+from app.models.student_model import Student
+from app.models.course_model import Course
 from app.extensions import db
 from app.models.enrollment_model import Enrollment
 
@@ -9,17 +10,13 @@ def _validate_enrollment_payload(data, enrollment_id=None):
     if not data:
         return ["Request body is required."]
     
-    existing_enrollment_id = Enrollment.query.filter_by(enrollment_id=data["enrollment_id"]).first()
-    if existing_enrollment_id:
-        return jsonify({"ERROR": "enrollment_id already exists"}), 400
-    
-    student = data.get("student_id")
-    if student is None or str(student).strip() == "":
-        errors.append("Invalid student selected")
+    student_id = data.get("student_id")
+    if not Student.query.get(student_id):
+        errors.append("Selected student does not exist.")
 
-    course = data.get("course_id")
-    if course is None or str(course).strip() == "":
-        errors.append("Invalid course selected")
+    course_id = data.get("course_id")
+    if not Course.query.get(course_id):
+        errors.append("Selected course does not exist.")
 
     enrollment_date = data.get("enrollment_date")
     if enrollment_date is None or str(enrollment_date).strip() == "":
@@ -43,9 +40,8 @@ def create_enrollment():
 
     try:
         enrollment = Enrollment(
-            enrollment_id=data.get("enrollment_id").strip(),
-            student_id=data.get("student_id").strip(),
-            course_id=data.get("course_id").strip(),
+            student_id=int(data.get("student_id")),
+            course_id=int(data.get("course_id")),
             enrollment_date=data.get("enrollment_date").strip(),
             status=data.get("status").strip(),   
         )

@@ -1,5 +1,5 @@
 from flask import jsonify, request
-
+from app.models.lecturer_model import Lecturer
 from app.extensions import db
 from app.models.course_model import Course
 
@@ -9,14 +9,10 @@ def _validate_course_payload(data, course_id=None):
     if not data:
         return ["Request body is required."]
     
-    existing_course_id = Course.query.filter_by(course_id=data["course_id"]).first()
-    if existing_course_id:
-        errors.append("course_id already exists")
-    
     existing_course_code = Course.query.filter_by(course_code=data["course_code"]).first()
     if existing_course_code:
         return jsonify({"ERROR": "course_code already exists"}), 400
-
+    
     course_name = data.get("course_name")
     if course_name is None or str(course_name).strip() == "":
         errors.append("course_name is required.")
@@ -25,9 +21,15 @@ def _validate_course_payload(data, course_id=None):
     if credits is None or not (1 <= int(credits) <= 6):
         errors.append("Credits must be between 1 and 6")
 
-    lecturer = data.get("lecturer_id")
-    if lecturer is None or str(lecturer).strip() == "":
-        errors.append("Invalid lecturer selected")
+    lecturer_id = data.get("lecturer_id")
+
+    if lecturer_id is None:
+        errors.append("lecturer_id is required.")
+    else:
+      lecturer = Lecturer.query.get(lecturer_id)
+
+    if not lecturer:
+        errors.append("Selected lecturer does not exist.")
 
     return errors
 
@@ -46,7 +48,7 @@ def create_course():
             course_code=data.get("course_code").strip(),
             course_name=data.get("course_name").strip(),
             credits=int(data.get("credits")),
-            lecturer_id=data.get("lecturer_id").strip(),
+            lecturer_id=int(data.get("lecturer_id")),
         )
         db.session.add(course)
         db.session.commit()
