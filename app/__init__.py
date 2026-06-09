@@ -13,7 +13,7 @@ def create_app():
     db.init_app(app)
     CORS(app)
 
-    from app.models import Course, Student  # noqa: F401
+    from app.models import Course, Student
 
     register_blueprint(app)
 
