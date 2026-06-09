@@ -9,27 +9,39 @@ def _validate_lecturer_payload(data, lecturer_id=None):
     if not data:
         return ["Request body is required."]
     
-    existing_lecturer_id = Lecturer.query.filter_by(lecturer_id=data["lecturer_id"]).first()
-    if existing_lecturer_id:
-        return jsonify({"ERROR": "lecturer_id already exists"}), 400
-
     first_name = data.get("first_name")
-    if first_name is None or str(first_name).strip() == "":
-        errors.append("first_name is required.")
+    if not first_name or str(first_name).strip() == "":
+        errors.append("Lecturer first name is required.")
+
+    elif not str(first_name).strip().isalpha():
+        errors.append("First name must contain only letters.")
+
 
     last_name = data.get("last_name")
-    if last_name is None or str(last_name).strip() == "":
-        errors.append("last_name is required.")
+    if not last_name or str(last_name).strip() == "":
+        errors.append("Lecturer last name is required.")
+
+    elif not str(last_name).strip().isalpha():
+        errors.append("Last name must contain only letters.")
+
 
     email = data.get("email")
-    if email is None or str(email).strip() == "":
-        errors.append("email is required.")
-    elif str(email).strip():
-        q = Lecturer.query.filter(Lecturer.email == str(email).strip())
+    if not email or str(email).strip() == "":
+        errors.append("Email is required.")
+    else:
+        em = str(email).strip()
+        if "@" not in em or "." not in em.split("@")[-1]:
+            errors.append("Invalid lecturer email address.")
+        else:
+            q = Lecturer.query.filter(Lecturer.email == em)
+            if lecturer_id:
+                q = q.filter(Lecturer.lecturer_id != lecturer_id)
+            if q.first():
+                errors.append("Lecturer email already exists.")
 
     department = data.get("department")
-    if department is None or str(department).strip() == "":
-        errors.append("department is required.")
+    if not department or str(department).strip() == "":
+        errors.append("Department is required.")
 
     return errors
 
@@ -53,9 +65,10 @@ def create_lecturer():
         db.session.add(lecturer)
         db.session.commit()
         return jsonify({"message": "lecturer created successfully.", "lecturer": lecturer.to_dict()}), 201
-    except Exception:
+    
+    except Exception as e:
         db.session.rollback()
-        return jsonify({"error": "An internal server error occurred."}), 500
+        return jsonify({"error": "An internal server error occurred.","details": str(e)}), 500
 
 
 def get_lecturers():
@@ -91,9 +104,9 @@ def update_lecturer(lecturer_id):
         lecturer.department = data.get("department").strip()
         db.session.commit()
         return jsonify({"message": "lecturer updated successfully.", "lecturer": lecturer.to_dict()}), 200
-    except Exception:
+    except Exception as e:
         db.session.rollback()
-        return jsonify({"error": "An internal server error occurred."}), 500
+        return jsonify({"error": "An internal server error occurred.","details": str(e)}), 500
 
 
 def delete_lecturer(lecturer_id):
@@ -104,6 +117,7 @@ def delete_lecturer(lecturer_id):
         db.session.delete(lecturer)
         db.session.commit()
         return jsonify({"message": "lecturer deleted successfully."}), 200
-    except Exception:
+    
+    except Exception as e:
         db.session.rollback()
-        return jsonify({"error": "An internal server error occurred."}), 500
+        return jsonify({"error": "An internal server error occurred.","details": str(e)}), 500

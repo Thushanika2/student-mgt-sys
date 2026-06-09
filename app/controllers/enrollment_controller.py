@@ -3,6 +3,7 @@ from app.models.student_model import Student
 from app.models.course_model import Course
 from app.extensions import db
 from app.models.enrollment_model import Enrollment
+from datetime import date
 
 
 def _validate_enrollment_payload(data, enrollment_id=None):
@@ -10,21 +11,39 @@ def _validate_enrollment_payload(data, enrollment_id=None):
     if not data:
         return ["Request body is required."]
     
+
     student_id = data.get("student_id")
-    if not Student.query.get(student_id):
-        errors.append("Selected student does not exist.")
+    if not student_id:
+        errors.append("Student is required.")
+
+    else:
+        student = Student.query.get(int(student_id))
+        if not student:
+            errors.append("Invalid student selected.")
+
 
     course_id = data.get("course_id")
-    if not Course.query.get(course_id):
-        errors.append("Selected course does not exist.")
+    if not course_id:
+        errors.append("Course is required.")
+
+    else:
+        course = Course.query.get(int(course_id))
+        if not course:
+            errors.append("Invalid course selected.")
+
 
     enrollment_date = data.get("enrollment_date")
-    if enrollment_date is None or str(enrollment_date).strip() == "":
-        errors.append("enrollment_date is required.")
+    if not enrollment_date:
+        errors.append("Enrollment date is required.")
+    else:
+        try:
+            date.fromisoformat(str(enrollment_date))
+        except ValueError:
+            errors.append("Enrollment date must be a valid date (YYYY-MM-DD).")
 
     status = data.get("status")
-    if status is None or str(status).strip() == "":
-        errors.append("status is required.")
+    if not status or str(status).strip() == "":
+        errors.append("Status is required.")
 
     return errors
 
@@ -42,15 +61,16 @@ def create_enrollment():
         enrollment = Enrollment(
             student_id=int(data.get("student_id")),
             course_id=int(data.get("course_id")),
-            enrollment_date=data.get("enrollment_date").strip(),
+            enrollment_date=date.fromisoformat(str(data.get("enrollment_date"))),
             status=data.get("status").strip(),   
         )
         db.session.add(enrollment)
         db.session.commit()
         return jsonify({"message": "enrollment created successfully.", "enrollment": enrollment.to_dict()}), 201
-    except Exception:
+    
+    except Exception as e:
         db.session.rollback()
-        return jsonify({"error": "An internal server error occurred."}), 500
+        return jsonify({"error": "An internal server error occurred.","details": str(e)}), 500
 
 
 def get_enrollments():
@@ -80,16 +100,16 @@ def update_enrollment(enrollment_id):
 
 
     try:
-        enrollment.enrollment_id = data.get("enrollment_id").strip()
-        enrollment.student_id = data.get("student_id").strip()
-        enrollment.course_id = data.get("course_id").strip()
-        enrollment.enrollment_date = data.get("enrollment_date").strip()
+        enrollment.student_id = int(data.get("student_id"))
+        enrollment.course_id = int(data.get("course_id"))
+        enrollment.enrollment_date = date.fromisoformat(str(data.get("enrollment_date")))
         enrollment.status = data.get("status").strip()
         db.session.commit()
         return jsonify({"message": "enrollment updated successfully.", "enrollment": enrollment.to_dict()}), 200
-    except Exception:
+    
+    except Exception as e:
         db.session.rollback()
-        return jsonify({"error": "An internal server error occurred."}), 500
+        return jsonify({"error": "An internal server error occurred.","details": str(e)}), 500
 
 
 def delete_enrollment(enrollment_id):
@@ -100,6 +120,7 @@ def delete_enrollment(enrollment_id):
         db.session.delete(enrollment)
         db.session.commit()
         return jsonify({"message": "enrollment deleted successfully."}), 200
-    except Exception:
+    
+    except Exception as e:
         db.session.rollback()
-        return jsonify({"error": "An internal server error occurred."}), 500
+        return jsonify({"error": "An internal server error occurred.","details": str(e)}), 500
